@@ -1,0 +1,12 @@
+numpy==1.26.4
+lightning==2.2.2
+efficientnet-pytorch==0.7.1
+wandb==0.16.6
+transformers==4.40.0
+tqdm
+nuscenes-devkit==1.1.11
+opencv-python==4.9.0.80
+moviepy==1.0.3
+thop
+albumentations==1.4.4
+pyquaternion==0.9.9
