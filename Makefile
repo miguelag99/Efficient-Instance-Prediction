@@ -5,7 +5,7 @@ IMAGE_NAME := efficient_instance_pred
 WANDB_API_KEY := $(shell echo $$WANDB_API_KEY)
 UID := $(shell id -u)
 GID := $(shell id -g)
-NUSCENES_PATH := /home/robesafe/nuscenes/trainval
+NUSCENES_PATH := /path/to/nuscenes/
 
 define run_docker
 	docker run -it --rm \

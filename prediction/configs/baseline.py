@@ -38,12 +38,12 @@ baseline_cfg = SimpleNamespace(
         LOAD_WEIGHTS = False,
         RESUME_TRAINING = False,
         PATH = '/home/perception/workspace/',
-        CKPT = 'checkpoints/Tiny-Short-vpq=0.5229.ckpt',
+        CKPT = 'checkpoints/_ckpt',
     ),
     
     DATASET = SimpleNamespace(
         DATAROOT = '/home/perception/Datasets/nuscenes/',
-        VERSION = 'v1.0-mini',
+        VERSION = 'v1.0-trainval',
         NAME = 'nuscenes',
         IGNORE_INDEX = 255,  # Ignore index when creating flow/offset labels
         FILTER_INVISIBLE_VEHICLES = True,  # Filter vehicles that are not visible from the cameras

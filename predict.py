@@ -196,7 +196,8 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint', type=str,required=True, default='checkpoints/_.ckpt', help='Path to model checkpoint')
     parser.add_argument('--dataset_root', type=str,required=True, default='/home/perception/Datasets/nuscenes/', help='Path to dataset root')
     parser.add_argument('--nusc_version',type=str, default='v1.0-trainval', help='Nuscenes dataset version')
-    parser.add_argument('--seq_id', help='Sequence id to visualize', type=int, default=-1, help='Sequence id to visualize, -1 to visualize all sequences')
+    parser.add_argument('--seq_id', help='Sequence id to visualize, if not specified all val dataset will be used'
+                        , type=int, default=-1, help='Sequence id to visualize, -1 to visualize all sequences')
     parser.add_argument('--save_path', help='Path to save results', type=str, default='results', help='Path to save results')
     parser.add_argument('--save_images', help='Save multi-camera input images', type=bool, default=False, help='Save multi-camera input images along with the results')
     args = parser.parse_args()
