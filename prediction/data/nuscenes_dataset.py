@@ -253,24 +253,38 @@ class NuscenesDataset(Dataset):
         images = torch.zeros((T, N, 3, H1, W1), dtype=torch.float)
         intrinsics = torch.zeros((T, N, 3, 3), dtype=torch.float)
         extrinsics = torch.zeros((T, N, 4, 4), dtype=torch.float)
+        lidar_2_sensor = torch.zeros((T, N, 4, 4), dtype=torch.float)
 
         for i, n in enumerate(sample_info_indices):
 
             sample_info = self.ixes[n]
 
             # From lidar egopose to world.
-            lidar_sample = self.nusc.get('sample_data', sample_info['data']['LIDAR_TOP'])
+            lidar_sample = self.nusc.get('sample_data',
+                                         sample_info['data']['LIDAR_TOP'])
             lidar_pose = self.nusc.get('ego_pose', lidar_sample['ego_pose_token'])
             yaw = Quaternion(lidar_pose['rotation']).yaw_pitch_roll[0]
-            lidar_rotation = Quaternion(scalar=np.cos(yaw / 2), vector=[0, 0, np.sin(yaw / 2)])
+            lidar_rotation = Quaternion(scalar=np.cos(yaw / 2),
+                                        vector=[0, 0, np.sin(yaw / 2)])
             lidar_translation = np.array(lidar_pose['translation'])[:, None]
             lidar_to_world = np.vstack([
                 np.hstack((lidar_rotation.rotation_matrix, lidar_translation)),
                 np.array([0, 0, 0, 1])
             ])
+            
+            # From lidar sensor to lidar frame
+            lidar_sensor_sample = self.nusc.get('calibrated_sensor',
+                                                lidar_sample['calibrated_sensor_token'])
+            sensor_rotation = Quaternion(lidar_sensor_sample['rotation'])
+            sensor_translation = np.array(lidar_sensor_sample['translation'])[:, None]
+            lidar_sensor_to_lidar_ego = np.vstack([
+                np.hstack((sensor_rotation.rotation_matrix, sensor_translation)),
+                np.array([0, 0, 0, 1])
+            ])
+            lidar_ego_to_lidar_sensor = np.linalg.inv(lidar_sensor_to_lidar_ego)
 
             for j, cam in enumerate(CAMERAS):
-
+                                  
                 camera_sample = self.nusc.get('sample_data', sample_info['data'][cam])
 
                 # From world to ego pose.
@@ -278,12 +292,14 @@ class NuscenesDataset(Dataset):
                 egopose_rotation = Quaternion(car_egopose['rotation']).inverse
                 egopose_translation = -np.array(car_egopose['translation'])[:, None]
                 world_to_car_egopose = np.vstack([
-                    np.hstack((egopose_rotation.rotation_matrix, egopose_rotation.rotation_matrix @ egopose_translation)),
+                    np.hstack((egopose_rotation.rotation_matrix,
+                               egopose_rotation.rotation_matrix @ egopose_translation)),
                     np.array([0, 0, 0, 1])
                 ])
 
                 # From egopose to sensor
-                sensor_sample = self.nusc.get('calibrated_sensor', camera_sample['calibrated_sensor_token'])
+                sensor_sample = self.nusc.get('calibrated_sensor',
+                                              camera_sample['calibrated_sensor_token'])
                 intrinsic = torch.Tensor(sensor_sample['camera_intrinsic'])
                 sensor_rotation = Quaternion(sensor_sample['rotation'])
                 sensor_translation = np.array(sensor_sample['translation'])[:, None]
@@ -293,13 +309,21 @@ class NuscenesDataset(Dataset):
                 ])
                 car_egopose_to_sensor = np.linalg.inv(car_egopose_to_sensor)
 
-                # Combine all the transformation.
-                # From sensor to lidar.
+                ## Combine all the transformation.
+                # From sensor to lidar_frame.
                 lidar_to_sensor = car_egopose_to_sensor @ world_to_car_egopose @ lidar_to_world
                 sensor_to_lidar = torch.from_numpy(np.linalg.inv(lidar_to_sensor)).float()
+                # From sensor to lidar sensor (sensor -> ego -> map -> ego' -> sensor)
+                cam_2_lidar_sensor = lidar_ego_to_lidar_sensor @ np.linalg.inv(lidar_to_sensor)
+                lidar_sensor_2_cam_sensor = torch.from_numpy(np.linalg.inv(cam_2_lidar_sensor)).float()
+                # Direct projection form 3D point in LiDAR sensor frame to camera plane
+                # ext_intrinsic = np.eye(4)
+                # ext_intrinsic[:intrinsic.shape[0], :intrinsic.shape[1]] = intrinsic
+                # lidar_2_img = ext_intrinsic @ lidar_2_cam_sensor
 
                 # Load image.
-                image_filename = os.path.join(self.nusc.dataroot, camera_sample['filename'])
+                image_filename = os.path.join(self.nusc.dataroot,
+                                              camera_sample['filename'])
                 # image = torch.from_numpy(
                 #     cv2.cvtColor(cv2.imread(image_filename), cv2.COLOR_BGR2RGB)
                 #     .transpose(2, 0, 1)
@@ -311,13 +335,13 @@ class NuscenesDataset(Dataset):
 
                 intrinsics[i,j,:,:] = intrinsic
                 extrinsics[i,j,:,:] = sensor_to_lidar
-
+                lidar_2_sensor[i,j,:,:] = lidar_sensor_2_cam_sensor
 
                 # # Apply data augmentation to the images and update instrinsics.
                 
         images, intrinsics, original_img = self.ida(images, intrinsics, self.return_orig_images)
 
-        return images, intrinsics, extrinsics, original_img
+        return images, intrinsics, extrinsics, lidar_2_sensor, original_img
 
     def record_instance(self, sample_info_indices):
         """
@@ -562,7 +586,7 @@ class NuscenesDataset(Dataset):
         # extra dimension when indexing one element (POSSIBLE CAUSE OF ERRORS).
 
         sample_info_indices = self.indices[index].tolist()
-        data["image"], data["intrinsics"], data["extrinsics"], orig_img = self.get_input_data(sample_info_indices)
+        data["image"], data["intrinsics"], data["extrinsics"], data["lidar_2_sensor"], orig_img = self.get_input_data(sample_info_indices)
 
         if orig_img is not None and self.return_orig_images:
             data["orig_image"] = orig_img
