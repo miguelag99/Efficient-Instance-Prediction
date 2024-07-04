@@ -16,7 +16,7 @@ import sys
 sys.path.append('../')
 
 from prediction.data.nuscenes_dataset import NuscenesDataset
-from prediction.configs import baseline_cfg
+from prediction.configs.tiny_short import tiny_short_cfg
 from prediction.utils.instance import generate_gt_instance_segmentation
                                        
 from prediction.utils.network import NormalizeInverse
@@ -28,15 +28,18 @@ from prediction.utils.visualisation import (convert_figure_numpy,
 
 if __name__ == '__main__':
     
-    cfg = baseline_cfg
-    cfg.DATASET.DATAROOT = '/home/perception/Datasets/nuscenes/trainval'
+    cfg = tiny_short_cfg
+    cfg.DATASET.DATAROOT = '/home/perception/Datasets/nuscenes'
     cfg.DATASET.VERSION = 'v1.0-mini'
     
     device = torch.device('cuda:0')
     mode = 'val'
     
-    save_path = os.path.join('plots', f'{mode}')
-    os.mkdir(save_path, exist_ok=True)
+    if not os.path.exists(os.path.join(os.getcwd(),'plots')):
+        os.mkdir(os.path.join(os.getcwd(),'plots'))
+    save_path = os.path.join(os.getcwd(),'plots', f'{mode}')
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
    
     nusc = NuScenes(
         version=cfg.DATASET.VERSION,
