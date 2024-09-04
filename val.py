@@ -10,7 +10,7 @@ import torch
 import yaml
 
 from prediction.data.prepare_loader import prepare_dataloaders
-from prediction.configs import baseline_cfg
+from prediction.configs.baseline import baseline_cfg
 from prediction.config import namespace_to_dict
 from prediction.trainer import TrainingModule
 
