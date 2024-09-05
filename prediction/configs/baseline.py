@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 baseline_cfg = SimpleNamespace(
     LOG_DIR = 'training_results',
-    TAG = 'prueba_resnet18',
-    WANDB_PROJECT = 'FAEFormer',
+    TAG = 'run_tag',
+    WANDB_PROJECT = 'wandb_project_name',
     WANDB_ID = '',
 
     ACCELERATOR = "cuda",
