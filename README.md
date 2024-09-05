@@ -1,13 +1,17 @@
 # Efficient-Instance-Prediction
 
-This repository contains the code for the paper **Fast and Efficient Transformer-based Method for Bird’s Eye View Instance Prediction** by :
-  - [Miguel Antunes](https://scholar.google.es/citations?user=5ZWa7pIAAAAJ&hl)
-  - [Luis M. Bergasa](https://scholar.google.es/citations?hl=es&user=uEBILewAAAAJ)
-  - [Santiago Montiel-Marín](https://scholar.google.es/citations?user=C84lnbUAAAAJ&hl)
-  - [Rafael Barea](https://scholar.google.es/citations?hl=es&user=IktmiSAAAAAJ)
-  - [Fabio Sánchez-García](https://scholar.google.es/citations?hl=es&user=2WZVFWQAAAAJ) 
-  - [Angel Llamazares](https://scholar.google.es/citations?user=DmrsFwEAAAAJ&hl)
+[![CHANGELOG](https://img.shields.io/badge/Changelog-v1.1.0-2ea44f)](https://github.com/miguelag99/Efficient-Instance-Prediction/blob/main/CHANGELOG.md) ![DOI](https://img.shields.io/badge/DOI-gray?style=flat&logo=doi) ![arxiv](https://img.shields.io/badge/arXiv-grey?style=flat&logo=arxiv&logoColor=%23B31B1B)
 
+[![pytorch](https://img.shields.io/badge/PyTorch-2.1.0-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org) [![Lightning](https://img.shields.io/badge/Lightning-2.2.3-purple?style=flat&logo=lightning)](https://lightning.ai/docs/pytorch/stable/) [![wandb](https://img.shields.io/badge/Wandb-yellow?style=flat&logo=weightsandbiases)](https://wandb.ai/) [![Docker](https://img.shields.io/badge/Docker-%23007FFF?style=flat&logo=docker&logoColor=white&labelColor=%23007FFF)](https://www.docker.com)
+
+This repository contains the code for the paper **Fast and Efficient Transformer-based Method for Bird’s Eye View Instance Prediction** by:
+
+- [Miguel Antunes](https://scholar.google.es/citations?user=5ZWa7pIAAAAJ&hl)
+- [Luis M. Bergasa](https://scholar.google.es/citations?hl=es&user=uEBILewAAAAJ)
+- [Santiago Montiel-Marín](https://scholar.google.es/citations?user=C84lnbUAAAAJ&hl)
+- [Rafael Barea](https://scholar.google.es/citations?hl=es&user=IktmiSAAAAAJ)
+- [Fabio Sánchez-García](https://scholar.google.es/citations?hl=es&user=2WZVFWQAAAAJ)
+- [Angel Llamazares](https://scholar.google.es/citations?user=DmrsFwEAAAAJ&hl)
 
 ![Instance prediction architecture](docs/architecture.png)
 
@@ -44,7 +48,6 @@ NUSCENES_PATH = /path/to/nuscenes
 |-----------|-----------|-----------|------------|--------------|--------------|
 |   Full    |    53.7   |   59.1    |   13.46    |  63          |  ['Full model ckpt'](https://universidaddealcala-my.sharepoint.com/:u:/g/personal/miguel_antunes_uah_es/ERwh_J556HhPkaqXpuBdpGoBfkVXFTVEPOE7HZ930GMA0w?e=pqkRgq)|
 |   Tiny    |    52.3   |   57.5    |   7.42     |  60          |  ['Tiny model ckpt'](https://universidaddealcala-my.sharepoint.com/:u:/g/personal/miguel_antunes_uah_es/ESvQgEjJ4FJPgOCObnYYX_gB4ytg_hWDHBTsaE3SQF0s3Q?e=xaxzvf)            |
-
 
 ## Installation and Usage
 
@@ -101,4 +104,10 @@ Inside the container, you can:
 
   - Load the weights of a pre-trained model if LOAD_WEIGHTS is set to True.
   - Continue training from a checkpoint if CONTINUE_TRAINING is also set to True, which mantains the optimizer and scheduler states.
-  
+
+## Contact
+
+[![Static Badge](https://img.shields.io/badge/ORCID-0009--0008--5627--5325-green?style=flat&logo=orcid)
+](https://orcid.org/0009-0008-5627-5325)
+
+If you have any questions, feel free to contact me at [miguel.antunes@uah.es](mailto:miguel.antunes@uah.es).
