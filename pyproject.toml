@@ -1,0 +1,26 @@
+[tool.pytest.ini_options]
+testpaths = [
+    "test"
+]
+console_output_style = "progress"
+python_files = [
+    "test_*.py",
+    "tests.py",
+    "test.py"
+]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
