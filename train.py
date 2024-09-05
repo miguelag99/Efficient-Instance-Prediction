@@ -32,6 +32,9 @@ def main(args):
     elif args.config == 'tiny_short':
         from prediction.configs.tiny_short import tiny_short_cfg
         cfg = tiny_short_cfg
+    elif args.config == 'tiny_short_resnet18':
+        from prediction.configs.tiny_short_resnet18 import tiny_short_resnet18_cfg
+        cfg = tiny_short_resnet18_cfg
     else:
         raise ValueError('Invalid config name')
     
@@ -94,7 +97,7 @@ def main(args):
         sync_batchnorm=True,
         gradient_clip_val=cfg.GRAD_NORM_CLIP,
         max_epochs=cfg.EPOCHS,
-        # logger=wdb_logger,
+        logger=wdb_logger,
         log_every_n_steps=cfg.LOGGING_INTERVAL,
         callbacks=[chkpt_callback, lr_monitor],
         profiler='simple',
@@ -120,7 +123,8 @@ if __name__ == "__main__":
     # Create parser with one argument
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='b0_short', required=True,
-                        choices=['tiny_short', 'b0_short','tiny_long', 'b0_long'])
+                        choices=['tiny_short', 'b0_short','tiny_long', 'b0_long',
+                                 'tiny_short_resnet18'])
     args = parser.parse_args()
 
 

@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 
-from prediction.model.camera_encoder import Encoder
+from prediction.model.efficientnet_encoder import EncoderEfficientNet
+from prediction.model.resnet_encoder import ResNetFPNEncoder
 from prediction.utils.network import pack_sequence_dim, unpack_sequence_dim
 from prediction.utils.geometry import VoxelsSumming, calculate_birds_eye_view_parameters, cumulative_warp_features
 
@@ -53,12 +54,28 @@ class FeatureExtractor(nn.Module):
         self.bev_size = (self.bev_dimension[0].item(), self.bev_dimension[1].item())
 
         # Define the camera multi-sweep encoder
-        self.encoder = Encoder(out_channels=out_channels,
-                               depth_distribution=use_depth_distribution,
-                               depth_channels=self.depth_channels,
-                               downsample=downsample,
-                               model_name=model_name,
-                               )
+        if 'efficientnet' in model_name.lower():
+            self.encoder = EncoderEfficientNet(out_channels=out_channels,
+                                               depth_distribution=use_depth_distribution,
+                                               depth_channels=self.depth_channels,
+                                               downsample=downsample,
+                                               model_name=model_name,
+                                               )
+        
+        elif 'resnet' in model_name.lower():
+            self.encoder = ResNetFPNEncoder(feature_extractor=model_name,
+                                            out_channels=out_channels,
+                                            depth_channels=self.depth_channels,
+                                            downsample=downsample,
+                                            depth_distribution=use_depth_distribution,
+                                            )
+        
+        elif 'mobilenet' in model_name.lower():
+            raise NotImplementedError('MobileNet not implemented yet.')
+        
+        else:
+            raise ValueError(f'Encoder model {model_name} not handled.')
+
 
     def forward(self, image, intrinsics, extrinsics, future_egomotion):
         '''
