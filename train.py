@@ -35,6 +35,10 @@ def main(args):
     elif args.config == 'tiny_short_resnet18':
         from prediction.configs.tiny_short_resnet18 import tiny_short_resnet18_cfg
         cfg = tiny_short_resnet18_cfg
+    elif args.config == 'tiny_short_timm_mobilenetv4_hybrid_large':
+        from prediction.configs.tiny_short_timm_mobilenetv4_hybrid_large \
+            import tiny_short_timm
+        cfg = tiny_short_timm    
     else:
         raise ValueError('Invalid config name')
     
@@ -124,7 +128,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='b0_short', required=True,
                         choices=['tiny_short', 'b0_short','tiny_long', 'b0_long',
-                                 'tiny_short_resnet18'])
+                                 'tiny_short_resnet18',
+                                 'tiny_short_timm_mobilenetv4_hybrid_large'])
     args = parser.parse_args()
 
 
