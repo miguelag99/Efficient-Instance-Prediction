@@ -49,10 +49,33 @@ def test_efficientnet(feature_extractor, out_channels, depth_channels, downsampl
                                 model_name=feature_extractor,
                                 ).to(device)
  
-    x = torch.randn(36, 3, 224, 480).to(device)
+    x = torch.randn(2, 3, 224, 480).to(device)
     x = model(x)
     assert x.shape[1] == out_channels
     assert x.shape[2] == depth_channels
     assert x.shape[-2] == 224 // downsample_factor
     assert x.shape[-1] == 480 // downsample_factor
     
+@pytest.mark.parametrize("feature_extractor",
+                         ['mobilenetv4_conv_small.e2400_r224_in1k'])
+@pytest.mark.parametrize("out_channels", [64])
+@pytest.mark.parametrize("depth_channels", [48])
+@pytest.mark.parametrize("downsample_factor", [4, 8, 16, 32])
+@torch.inference_mode()
+def test_timm(feature_extractor, out_channels, depth_channels, downsample_factor):
+ 
+    from prediction.model.timm_encoder import TimmFPNEncoder
+ 
+    model = TimmFPNEncoder(out_channels=out_channels,
+                                depth_distribution=True,
+                                depth_channels=depth_channels,
+                                downsample=downsample_factor,
+                                model_name=feature_extractor,
+                                ).to(device)
+ 
+    x = torch.randn(2, 3, 224, 480).to(device)
+    x = model(x)
+    assert x.shape[1] == out_channels
+    assert x.shape[2] == depth_channels
+    assert x.shape[-2] == 224 // downsample_factor
+    assert x.shape[-1] == 480 // downsample_factor

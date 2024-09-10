@@ -1,11 +1,10 @@
 from typing import Literal
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet18, resnet50, resnet101
-from torchvision.models.feature_extraction import create_feature_extractor
+
+import timm
 
 class TopDownBlock(nn.Module):
 
@@ -36,28 +35,20 @@ class TopDownBlock(nn.Module):
             x = self.conv(self.act_fn(x1))
         return x
 
-class ResNetFPN(nn.Module):
+class TimmFPN(nn.Module):
 
     def __init__(
         self,
-        feature_extractor: Literal['resnet18', 'resnet50', 'resnet101'],
+        feature_extractor: str = 'mobilenetv4_conv_small.e2400_r224_in1k',
         out_channels: int = 256,
     ) -> None:
         super().__init__()
-
-        assert feature_extractor in ['resnet18', 'resnet50', 'resnet101']
-                     
-        match feature_extractor:
-            case 'resnet18':
-                model = resnet18(weights="IMAGENET1K_V1")
-            case 'resnet50':
-                model = resnet50(weights="IMAGENET1K_V2")
-            case 'resnet101':
-                model = resnet101(weights="IMAGENET1K_V2")
-                
-        self.backbone = create_feature_extractor(
-            model,
-            return_nodes=['layer1', 'layer2', 'layer3', 'layer4'])
+        
+        self.backbone = timm.create_model(
+            feature_extractor,
+            pretrained=True,
+            features_only=True)
+        
         conv_out_channels = self._get_backbone_out_channels()
         
         self.top_down_block5 = TopDownBlock(conv_out_channels[-1], out_channels,
@@ -70,7 +61,7 @@ class ResNetFPN(nn.Module):
     def _get_backbone_out_channels(self):
         inp = torch.randn(1, 3, 224, 224)
         out_channels = []
-        for _, v in self.backbone(inp).items():
+        for v in self.backbone(inp):
             out_channels.append(v.shape[1])
         return out_channels
 
@@ -78,8 +69,8 @@ class ResNetFPN(nn.Module):
 
         # Bottom-up pathway.
         features = self.backbone(x)
-        c2, c3, c4, c5 = features['layer1'], features['layer2'], \
-            features['layer3'], features['layer4']
+        c2, c3, c4, c5 = features[-4], features[-3], \
+            features[-2], features[-1]
 
         # Top-down pathway with lateral connections.
         p5 = self.top_down_block5(c5, None)
@@ -89,11 +80,11 @@ class ResNetFPN(nn.Module):
 
         return p2, p3, p4, p5
     
-class ResNetFPNEncoder(nn.Module):
+class TimmFPNEncoder(nn.Module):
 
     def __init__(
         self,
-        feature_extractor: Literal['resnet18', 'resnet50', 'resnet101'],
+        feature_extractor: str  = 'mobilenetv4_conv_small.e2400_r224_in1k',
         out_channels: int = 64,
         depth_channels: int = 32,
         downsample: int = 8,
@@ -111,7 +102,7 @@ class ResNetFPNEncoder(nn.Module):
         
         assert self.C > 0
 
-        self.fpn = ResNetFPN(feature_extractor, out_channels = self.C)
+        self.fpn = TimmFPN(feature_extractor, out_channels = self.C)
         if downsample not in [4, 8, 16, 32]:
             raise ValueError("Downsample must be one of [4, 8, 16, 32]")
         self.downsample = downsample
@@ -157,7 +148,7 @@ if __name__ == '__main__':
     # Simple inference test
     
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-            
+        
     # Create input data
     img = torch.randn(7, 3, 224, 480).to(device)
     b, c, h, w = img.shape
@@ -167,11 +158,10 @@ if __name__ == '__main__':
     r2 = img.shape[-1] % 32
     img= img[...,:img.shape[-2] - r1,:img.shape[-1] - r2]
     
-    # Define the models
-    feature_extractor = ResNetFPNEncoder('resnet18', out_channels = 64,
-                            depth_channels = 48, downsample = 8,
-                            depth_distribution = True).to(device)
-    
+    # Define the models    
+    model = TimmFPNEncoder(out_channels=64, depth_channels=48,
+                           downsample=8, depth_distribution=True).to(device)
+
     with torch.inference_mode():
-        feats = feature_extractor(img)
+        feats = model(img)
         print(feats.shape) # Expected output [7, 64, 48, 28, 60]
