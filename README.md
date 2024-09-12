@@ -89,16 +89,17 @@ Inside the container, you can:
 
 - Train the model:
 
-  First, you can configure some training parameters in the `prediction/configs/baseline.py` file.
-  We also provide the configuration files for our 4 models in the same folder.
+  First, you can configure some training parameters in the `prediction/configs/baseline.py` file. We also provide the configuration files for our models in the same folder.
 
   If you want to use your Wandb account, you can set a WANDB_API_KEY environment variable with your API key.
 
   The model can be trained with the following command:
 
   ```bash
-  python train.py --config 'tiny_short/b0_short/tiny_long/b0_long'
+  python train.py --config 'config_name'
   ```
+
+  Where `config_name` is the name of the configuration file without the `.py` extension in `prediction/configs`. New custom configurations can also be added to this folder.
 
   If you specify a checkpoint path in `baseline.py` you can:
 
