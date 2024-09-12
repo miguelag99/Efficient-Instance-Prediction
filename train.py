@@ -3,6 +3,7 @@ import socket
 import warnings
 import time
 import argparse
+import importlib
 import numpy as np
 import random
 
@@ -13,41 +14,14 @@ from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary, LearningRateMonitor
 
 from prediction.data.prepare_loader import prepare_dataloaders
-from prediction.config import namespace_to_dict
+from prediction.config import get_config
 from prediction.trainer import TrainingModule
 
 
 def main(args):
-
-    # Load training config
-    if args.config == 'b0_long':
-        from prediction.configs.b0_long import b0_long_cfg
-        cfg = b0_long_cfg
-    elif args.config == 'b0_short':
-        from prediction.configs.b0_short import b0_short_cfg
-        cfg = b0_short_cfg
-    elif args.config == 'tiny_long':
-        from prediction.configs.tiny_long import tiny_long_cfg
-        cfg = tiny_long_cfg
-    elif args.config == 'tiny_short':
-        from prediction.configs.tiny_short import tiny_short_cfg
-        cfg = tiny_short_cfg
-    elif args.config == 'tiny_short_resnet18':
-        from prediction.configs.tiny_short_resnet18 import tiny_short_resnet18_cfg
-        cfg = tiny_short_resnet18_cfg
-    elif args.config == 'tiny_short_timm_mobilenetv4_hybrid_large':
-        from prediction.configs.tiny_short_timm_mobilenetv4_hybrid_large \
-            import tiny_short_timm
-        cfg = tiny_short_timm   
-    elif args.config == 'tiny_short_timm_convnext_tiny':
-        from prediction.configs.tiny_short_timm_convnext_tiny import tiny_short_timm
-        cfg = tiny_short_timm   
-    else:
-        raise ValueError('Invalid config name')
     
-    hparams = namespace_to_dict(cfg)
-    
-    exit()
+    cfg, hparams = get_config(cfg_dir='./prediction/configs/', 
+                     cfg_file=args.config)
     
     if cfg.PRETRAINED.RESUME_TRAINING:
         save_dir = cfg.PRETRAINED.PATH

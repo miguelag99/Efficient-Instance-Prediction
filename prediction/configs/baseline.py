@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 baseline_cfg = SimpleNamespace(
     LOG_DIR = 'training_results',
-    TAG = 'run_tag',
-    WANDB_PROJECT = 'wandb_project_name',
+    TAG = 'convnext_tiny',
+    WANDB_PROJECT = 'FAEFormer',
     WANDB_ID = '',
 
     ACCELERATOR = "cuda",
@@ -26,7 +26,7 @@ baseline_cfg = SimpleNamespace(
     GRAD_NORM_CLIP = 0.5,
 
     N_WORKERS = 2,
-    LOGGING_INTERVAL = 100,
+    LOGGING_INTERVAL = 5,
     
     
     # Pretrainied or resume training configuration

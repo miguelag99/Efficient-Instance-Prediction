@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 from prediction.configs.baseline import baseline_cfg
 
-tiny_short_resnet18_cfg = baseline_cfg
+model_cfg = baseline_cfg
 
-tiny_short_resnet18_cfg.LIFT = SimpleNamespace(
+model_cfg.LIFT = SimpleNamespace(
         # Short BEV dimensions
         X_BOUND = [-15.0, 15.0, 0.15],  # Forward
         Y_BOUND = [-15.0, 15.0, 0.15],  # Sides
@@ -12,7 +12,7 @@ tiny_short_resnet18_cfg.LIFT = SimpleNamespace(
         D_BOUND = [2.0, 50.0, 1.0],
 )
 
-tiny_short_resnet18_cfg.MODEL = SimpleNamespace(
+model_cfg.MODEL = SimpleNamespace(
 
         STCONV = SimpleNamespace(
             INPUT_EGOPOSE = True,
