@@ -65,13 +65,13 @@ def test_efficientnet(feature_extractor, out_channels, depth_channels, downsampl
 def test_timm(feature_extractor, out_channels, depth_channels, downsample_factor):
  
     from prediction.model.timm_encoder import TimmFPNEncoder
- 
-    model = TimmFPNEncoder(out_channels=out_channels,
-                                depth_distribution=True,
-                                depth_channels=depth_channels,
-                                downsample=downsample_factor,
-                                model_name=feature_extractor,
-                                ).to(device)
+     
+    model = TimmFPNEncoder(feature_extractor=feature_extractor,
+                           out_channels=out_channels,
+                           depth_channels=depth_channels,
+                           downsample=downsample_factor,
+                           depth_distribution=True,
+                           ).to(device)
  
     x = torch.randn(2, 3, 224, 480).to(device)
     x = model(x)

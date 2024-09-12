@@ -1,20 +1,18 @@
-import os
-import socket
-import warnings
-import time
 import argparse
-import importlib
-import numpy as np
+import os
 import random
+import socket
+import time
+import warnings
 
 import lightning as L
+import numpy as np
 import torch
-
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary, LearningRateMonitor
 
-from prediction.data.prepare_loader import prepare_dataloaders
 from prediction.config import get_config
+from prediction.data.prepare_loader import prepare_dataloaders
 from prediction.trainer import TrainingModule
 
 
@@ -26,7 +24,8 @@ def main(args):
     if cfg.PRETRAINED.RESUME_TRAINING:
         save_dir = cfg.PRETRAINED.PATH
         if cfg.WANDB_ID == '':
-            warnings.warn("Wandb ID not provided. Logging will start a new run.")
+            warnings.warn("Wandb ID not provided. Logging will start a new run.",
+                          UserWarning, stacklevel=2)
             wdb_logger = WandbLogger(project=cfg.WANDB_PROJECT,save_dir=save_dir,
                     log_model=False, name=cfg.TAG)
         else:   
@@ -35,7 +34,8 @@ def main(args):
                                     id=cfg.WANDB_ID, resume='must')
     else:
         save_dir = os.path.join(
-            cfg.LOG_DIR, time.strftime('%d%b%Yat%H:%M') + '_' + socket.gethostname() + '_' + cfg.TAG
+            cfg.LOG_DIR, time.strftime('%d%b%Yat%H:%M') + '_' + socket.gethostname() +\
+                '_' + cfg.TAG
         ) 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -105,13 +105,7 @@ def main(args):
 if __name__ == "__main__":
     # Create parser with one argument
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='b0_short', required=True,
-                        choices=['tiny_short', 'b0_short','tiny_long', 'b0_long',
-                                 'tiny_short_resnet18',
-                                 'tiny_short_timm_mobilenetv4_hybrid_large',
-                                 'tiny_short_timm_convnext_tiny'])
+    parser.add_argument('-c','--config', type=str, default='b0_short', required=True)
     args = parser.parse_args()
-
-
 
     main(args)
