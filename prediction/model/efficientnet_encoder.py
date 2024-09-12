@@ -3,7 +3,7 @@ from efficientnet_pytorch import EfficientNet
 
 from prediction.layers.convolutions import UpsamplingConcat
 
-class Encoder(nn.Module):
+class EncoderEfficientNet(nn.Module):
     def __init__(self, 
                  out_channels: int = 64,
                  depth_distribution: bool = True,

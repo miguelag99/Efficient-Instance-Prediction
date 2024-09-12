@@ -1,46 +1,31 @@
-import os
-import socket
-import warnings
-import time
 import argparse
-import numpy as np
+import os
 import random
+import socket
+import time
+import warnings
 
 import lightning as L
+import numpy as np
 import torch
-
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary, LearningRateMonitor
 
+from prediction.config import get_config
 from prediction.data.prepare_loader import prepare_dataloaders
-from prediction.config import namespace_to_dict
 from prediction.trainer import TrainingModule
 
 
 def main(args):
-
-    # Load training config
-    if args.config == 'b0_long':
-        from prediction.configs.b0_long import b0_long_cfg
-        cfg = b0_long_cfg
-    elif args.config == 'b0_short':
-        from prediction.configs.b0_short import b0_short_cfg
-        cfg = b0_short_cfg
-    elif args.config == 'tiny_long':
-        from prediction.configs.tiny_long import tiny_long_cfg
-        cfg = tiny_long_cfg
-    elif args.config == 'tiny_short':
-        from prediction.configs.tiny_short import tiny_short_cfg
-        cfg = tiny_short_cfg
-    else:
-        raise ValueError('Invalid config name')
     
-    hparams = namespace_to_dict(cfg)
+    cfg, hparams = get_config(cfg_dir='./prediction/configs/', 
+                     cfg_file=args.config)
     
     if cfg.PRETRAINED.RESUME_TRAINING:
         save_dir = cfg.PRETRAINED.PATH
         if cfg.WANDB_ID == '':
-            warnings.warn("Wandb ID not provided. Logging will start a new run.")
+            warnings.warn("Wandb ID not provided. Logging will start a new run.",
+                          UserWarning, stacklevel=2)
             wdb_logger = WandbLogger(project=cfg.WANDB_PROJECT,save_dir=save_dir,
                     log_model=False, name=cfg.TAG)
         else:   
@@ -49,7 +34,8 @@ def main(args):
                                     id=cfg.WANDB_ID, resume='must')
     else:
         save_dir = os.path.join(
-            cfg.LOG_DIR, time.strftime('%d%b%Yat%H:%M') + '_' + socket.gethostname() + '_' + cfg.TAG
+            cfg.LOG_DIR, time.strftime('%d%b%Yat%H:%M') + '_' + socket.gethostname() +\
+                '_' + cfg.TAG
         ) 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -94,7 +80,7 @@ def main(args):
         sync_batchnorm=True,
         gradient_clip_val=cfg.GRAD_NORM_CLIP,
         max_epochs=cfg.EPOCHS,
-        # logger=wdb_logger,
+        logger=wdb_logger,
         log_every_n_steps=cfg.LOGGING_INTERVAL,
         callbacks=[chkpt_callback, lr_monitor],
         profiler='simple',
@@ -119,10 +105,7 @@ def main(args):
 if __name__ == "__main__":
     # Create parser with one argument
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='b0_short', required=True,
-                        choices=['tiny_short', 'b0_short','tiny_long', 'b0_long'])
+    parser.add_argument('-c','--config', type=str, default='b0_short', required=True)
     args = parser.parse_args()
-
-
 
     main(args)

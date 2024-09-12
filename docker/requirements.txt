@@ -1,8 +1,9 @@
 numpy==1.26.4
 lightning==2.2.2
 efficientnet-pytorch==0.7.1
-wandb==0.16.6
-transformers==4.40.0
+wandb
+transformers
+timm
 tqdm
 nuscenes-devkit==1.1.11
 opencv-python==4.9.0.80

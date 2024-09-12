@@ -1,26 +1,23 @@
+import argparse
 import os
+
 import cv2
-import time
-import pdb
 import numpy as np
 import torch
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import argparse
-
 from tqdm import tqdm
 
-from prediction.trainer import TrainingModule
-from prediction.configs.baseline import baseline_cfg
 from prediction.data.prepare_loader import prepare_dataloaders
-from prediction.utils.geometry import (update_intrinsics, convert_egopose_to_matrix_numpy,
-                                       invert_matrix_egopose_numpy, mat2pose_vec, calculate_birds_eye_view_parameters)
-from prediction.utils.instance import (predict_instance_segmentation,
-                                       generate_gt_instance_segmentation, 
-                                       convert_instance_mask_to_center_and_offset_label)
-from prediction.utils.visualisation import (convert_figure_numpy,
-                                            generate_instance_colours,
-                                            make_contour, plot_instance_map)
+from prediction.trainer import TrainingModule
+from prediction.utils.geometry import calculate_birds_eye_view_parameters
+from prediction.utils.instance import (
+    generate_gt_instance_segmentation,
+    predict_instance_segmentation,
+)
+from prediction.utils.visualisation import (
+    generate_instance_colours,
+    make_contour,
+    plot_instance_map,
+)
 
 EGO_DIMS = (4.087,1.562,1.787)
 
@@ -36,8 +33,10 @@ def main(args):
     cfg.DATASET.DATAROOT = args.dataset_root
     cfg.DATASET.VERSION = args.nusc_version
     
-    print(f'Loading validation dataset from {cfg.DATASET.DATAROOT} version {cfg.DATASET.VERSION}')
-    _, valloader, _, valdataset = prepare_dataloaders(cfg, return_dataset=True, return_orig_images=True)
+    print(f'Loading validation dataset from {cfg.DATASET.DATAROOT}' + \
+        'version {cfg.DATASET.VERSION}')
+    _, valloader, _, valdataset = prepare_dataloaders(cfg, return_dataset=True,
+                                                      return_orig_images=True)
     
 
     if torch.cuda.is_available():
@@ -58,13 +57,16 @@ def main(args):
     # Plot only one sequence
     if args.seq_id != -1:
         batch = valdataset[args.seq_id]
-        for key in batch.keys():
+        for key in batch:
             batch[key] = batch[key].unsqueeze(0)
         
-        output = l_module.model(batch['image'].to(device), batch['intrinsics'].to(device),
-                                batch['extrinsics'].to(device), batch['future_egomotion'].to(device))
+        output = l_module.model(batch['image'].to(device),
+                                batch['intrinsics'].to(device),
+                                batch['extrinsics'].to(device),
+                                batch['future_egomotion'].to(device))
         
-        generate_val_plots(cfg, batch, output, args.seq_id, save_path = args.save_path, save_images = args.save_images)
+        generate_val_plots(cfg, batch, output, args.seq_id,
+                           save_path = args.save_path, save_images = args.save_images)
         
             
         exit()
@@ -73,18 +75,22 @@ def main(args):
     for i, batch in tqdm(enumerate(valdataset), total=len(valdataset)):
         
         # Add batch dimension
-        for key in batch.keys():
+        for key in batch:
             batch[key] = batch[key].unsqueeze(0)
         
-        output = l_module.model(batch['image'].to(device), batch['intrinsics'].to(device),
-                                batch['extrinsics'].to(device), batch['future_egomotion'].to(device))
+        output = l_module.model(batch['image'].to(device),
+                                batch['intrinsics'].to(device),
+                                batch['extrinsics'].to(device),
+                                batch['future_egomotion'].to(device))
         
-        generate_val_plots(cfg, batch, output, i, save_path = args.save_path, save_images = args.save_images)
+        generate_val_plots(cfg, batch, output, i, save_path = args.save_path,
+                           save_images = args.save_images)
         
         
                 
 
-def generate_val_plots(cfg, batch, output, seq_id, save_path = 'results', save_images = False):
+def generate_val_plots(cfg, batch, output, seq_id,
+                       save_path = 'results', save_images = False):
     
         # Bird's-eye view parameters
         bev_resolution, bev_start_position, bev_dimension = calculate_birds_eye_view_parameters(
@@ -129,8 +135,8 @@ def generate_val_plots(cfg, batch, output, seq_id, save_path = 'results', save_i
             path = matched_centers[instance_id]
             for t in range(len(path) - 1):
                 color = instance_colours[instance_id].tolist()
-                cv2.line(trajectory_img, tuple(map(int,path[t])), tuple(map(int,path[t+1])),
-                        color, 4)
+                cv2.line(trajectory_img, tuple(map(int,path[t])),
+                         tuple(map(int,path[t+1])), color, 4)
 
         # Overlay arrows
         temp_img = cv2.addWeighted(vis_image, 0.7, trajectory_img, 0.3, 0.0)
@@ -147,7 +153,8 @@ def generate_val_plots(cfg, batch, output, seq_id, save_path = 'results', save_i
         vis_image = cv2.fillPoly(vis_image, [pts], (0, 0, 0))
         vis_image =cv2.cvtColor(vis_image, cv2.COLOR_RGB2BGR)
         
-        cv2.imwrite(os.path.join(save_path,'gt_instance_seg.png'), make_contour(vis_image[::-1, ::-1]))
+        cv2.imwrite(os.path.join(save_path,'gt_instance_seg.png'),
+                    make_contour(vis_image[::-1, ::-1]))
         
         # Generate predicted instance prediction
                 
@@ -155,7 +162,8 @@ def generate_val_plots(cfg, batch, output, seq_id, save_path = 'results', save_i
         output['instance_flow'] = output['instance_flow'][0,1:,:,:].unsqueeze(0)
         
         consistent_instance_seg, matched_centers = predict_instance_segmentation(
-            output, compute_matched_centers=True, spatial_extent=(cfg.LIFT.X_BOUND[1], cfg.LIFT.Y_BOUND[1])
+            output, compute_matched_centers=True,
+            spatial_extent=(cfg.LIFT.X_BOUND[1],cfg.LIFT.Y_BOUND[1])
         )
         
         first_instance_seg = consistent_instance_seg[0, 1]
@@ -169,8 +177,8 @@ def generate_val_plots(cfg, batch, output, seq_id, save_path = 'results', save_i
             path = matched_centers[instance_id]
             for t in range(len(path) - 1):
                 color = instance_colours[instance_id].tolist()
-                cv2.line(trajectory_img, tuple(map(int,path[t])), tuple(map(int,path[t+1])),
-                        color, 4)
+                cv2.line(trajectory_img, tuple(map(int,path[t])),
+                         tuple(map(int,path[t+1])), color, 4)
 
         # Overlay arrows
         temp_img = cv2.addWeighted(vis_image, 0.7, trajectory_img, 0.3, 0.0)
@@ -187,19 +195,27 @@ def generate_val_plots(cfg, batch, output, seq_id, save_path = 'results', save_i
         vis_image = cv2.fillPoly(vis_image, [pts], (0, 0, 0))
         vis_image =cv2.cvtColor(vis_image, cv2.COLOR_RGB2BGR)
         
-        cv2.imwrite(os.path.join(save_path,'pred_instance_seg.png'), make_contour(vis_image[::-1, ::-1]))
+        cv2.imwrite(os.path.join(save_path,'pred_instance_seg.png'),
+                    make_contour(vis_image[::-1, ::-1]))
              
     
 if __name__ == "__main__":
     # Create parser with one argument
     parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint', type=str,required=True, default='checkpoints/_.ckpt', help='Path to model checkpoint')
-    parser.add_argument('--dataset_root', type=str,required=True, default='/home/perception/Datasets/nuscenes/', help='Path to dataset root')
-    parser.add_argument('--nusc_version',type=str, default='v1.0-trainval', help='Nuscenes dataset version')
-    parser.add_argument('--seq_id', help='Sequence id to visualize, if not specified all val dataset will be used'
-                        , type=int, default=-1, help='Sequence id to visualize, -1 to visualize all sequences')
-    parser.add_argument('--save_path', help='Path to save results', type=str, default='results', help='Path to save results')
-    parser.add_argument('--save_images', help='Save multi-camera input images', type=bool, default=False, help='Save multi-camera input images along with the results')
+    parser.add_argument('--checkpoint', type=str,required=True,
+                        default='checkpoints/_.ckpt', help='Path to model checkpoint')
+    parser.add_argument('--dataset_root', type=str,required=True,
+                        default='/home/perception/Datasets/nuscenes/',
+                        help='Path to dataset root')
+    parser.add_argument('--nusc_version',type=str, default='v1.0-trainval',
+                        help='Nuscenes dataset version')
+    parser.add_argument('--seq_id',help='Sequence id to visualize,' + \
+                        'if not specified all val dataset will be used',
+                        type=int, default=-1)
+    parser.add_argument('--save_path', help='Path to save results',
+                        type=str, default='results')
+    parser.add_argument('--save_images', type=bool, default=False,
+                        help='Save multi-camera input images along with the results')
     args = parser.parse_args()
 
 

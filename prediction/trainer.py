@@ -52,7 +52,8 @@ class TrainingModule(L.LightningModule):
         })
 
         # Uncertainty weighting
-        self.model.segmentation_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
+        self.model.segmentation_weight = nn.Parameter(torch.tensor(0.0),
+                                                      requires_grad=True)
         self.model.flow_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
 
         # Metrics
@@ -74,7 +75,8 @@ class TrainingModule(L.LightningModule):
             labels, future_distribution_inputs = self.prepare_future_labels(batch)
 
             # Forward pass
-            output = self.model(image, intrinsics, extrinsics, future_egomotion, future_distribution_inputs)
+            output = self.model(image, intrinsics, extrinsics, future_egomotion,
+                                future_distribution_inputs)
 
             # Calculate loss
             loss = self.calculate_loss(output, labels)
@@ -86,8 +88,11 @@ class TrainingModule(L.LightningModule):
                 end_time = time.time()
 
                 # Calculate metrics
-                self.metric_iou_val(torch.argmax(output['segmentation'].detach(), dim=2, keepdims=True)[:, 1:], labels['segmentation'][:, 1:])
-                self.metric_panoptic_val(pred_consistent_instance_seg[:, 1:], labels['instance'][:, 1:])
+                self.metric_iou_val(torch.argmax(output['segmentation'].detach(),
+                                                 dim=2, keepdims=True)[:, 1:],
+                                    labels['segmentation'][:, 1:])
+                self.metric_panoptic_val(pred_consistent_instance_seg[:, 1:],
+                                         labels['instance'][:, 1:])
             
                 # Record run time
                 self.perception_time.append(output['perception_time'])
@@ -179,7 +184,8 @@ class TrainingModule(L.LightningModule):
                 scores = self.metric_iou_val.compute()
                 
                 for key, value in zip(class_names, scores):
-                    self.log('metrics/val_iou_' + key, value, batch_size = self.bs, sync_dist=True)
+                    self.log('metrics/val_iou_' + key, value,
+                             batch_size = self.bs, sync_dist=True)
                     print(f"val_iou_{key}: {value}")
                 self.metric_iou_val.reset()
 
@@ -188,11 +194,13 @@ class TrainingModule(L.LightningModule):
                 for key, value in scores.items():
                     for instance_name, score in zip(class_names, value):
                         if instance_name != 'background':
-                            self.log(f'metrics/val_{key}_{instance_name}', score.item(), batch_size = self.bs, sync_dist=True)
+                            self.log(f'metrics/val_{key}_{instance_name}', score.item(),
+                                     batch_size = self.bs, sync_dist=True)
                             print(f"val_{key}_{instance_name}: {score.item()}")
                         # Log VPQ metric for the model checkpoint monitor 
                         if key == 'pq' and instance_name == 'dynamic':
-                            self.log('vpq', score.item(), batch_size = self.bs, sync_dist=True)
+                            self.log('vpq', score.item(), batch_size = self.bs,
+                                     sync_dist=True)
                 self.metric_panoptic_val.reset()
 
                 print("========================== Runtime ==========================")
@@ -224,11 +232,13 @@ class TrainingModule(L.LightningModule):
         sched_name = self.cfg.SCHEDULER.TYPE
         if optim_name == 'AdamW':
             optimizer = torch.optim.AdamW(
-                params, lr=self.cfg.OPTIMIZER.LR, weight_decay=self.cfg.OPTIMIZER.WEIGHT_DECAY
+                params,lr=self.cfg.OPTIMIZER.LR,
+                weight_decay=self.cfg.OPTIMIZER.WEIGHT_DECAY
             )
         elif optim_name == 'Adam':
             optimizer = torch.optim.Adam(
-                params, lr=self.cfg.OPTIMIZER.LR, weight_decay=self.cfg.OPTIMIZER.WEIGHT_DECAY
+                params, lr=self.cfg.OPTIMIZER.LR,
+                weight_decay=self.cfg.OPTIMIZER.WEIGHT_DECAY
             )
         else:
             raise NotImplementedError

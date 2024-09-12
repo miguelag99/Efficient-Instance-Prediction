@@ -5,22 +5,22 @@ from prediction.configs.baseline import baseline_cfg
 model_cfg = baseline_cfg
 
 model_cfg.LIFT = SimpleNamespace(
-        # Long BEV dimensions
-        X_BOUND = [-50.0, 50.0, 0.5],  # Forward
-        Y_BOUND = [-50.0, 50.0, 0.5],  # Sides
+        # Short BEV dimensions
+        X_BOUND = [-15.0, 15.0, 0.15],  # Forward
+        Y_BOUND = [-15.0, 15.0, 0.15],  # Sides
         Z_BOUND = [-10.0, 10.0, 20.0],  # Height
         D_BOUND = [2.0, 50.0, 1.0],
 )
 
 model_cfg.MODEL = SimpleNamespace(
-    
+
         STCONV = SimpleNamespace(
             INPUT_EGOPOSE = True,
-        ),
+        ),    
         
         ENCODER = SimpleNamespace(
             DOWNSAMPLE = 8,
-            NAME = 'efficientnet-b4',
+            NAME = 'convnext_tiny.fb_in22k_ft_in1k_384',
             OUT_CHANNELS = 64,
             USE_DEPTH_DISTRIBUTION = True,
         ),

@@ -1,26 +1,26 @@
 import os
+from types import SimpleNamespace
+from typing import Any, Literal
 
 import cv2
 import numpy as np
 import torch
-import torchvision
 import torchvision.transforms.functional as F
-
-from torch.utils.data import Dataset, DataLoader
-
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils import splits
 from nuscenes.utils.data_classes import Box
+from pyquaternion import Quaternion
+from torch.utils.data import Dataset
 from torchvision.io import read_image
 
-from pyquaternion import Quaternion
-
-from types import SimpleNamespace
-from typing import Any, Literal
-
-from prediction.utils.geometry import (update_intrinsics, convert_egopose_to_matrix_numpy,
-                                       invert_matrix_egopose_numpy, mat2pose_vec, calculate_birds_eye_view_parameters)
+from prediction.utils.geometry import (
+    calculate_birds_eye_view_parameters,
+    convert_egopose_to_matrix_numpy,
+    invert_matrix_egopose_numpy,
+    mat2pose_vec,
+)
 from prediction.utils.instance import convert_instance_mask_to_center_and_offset_label
+
 
 class ImageDataAugmentator:
 
@@ -98,7 +98,8 @@ class ImageDataAugmentator:
 
 class NuscenesDataset(Dataset):
 
-    def __init__(self, config: SimpleNamespace, mode = 'train', return_orig_images: bool = False) -> None:
+    def __init__(self, config: SimpleNamespace, mode = 'train',
+                 return_orig_images: bool = False) -> None:
         
         self.nusc = NuScenes(
             version=config.DATASET.VERSION,
@@ -134,7 +135,8 @@ class NuscenesDataset(Dataset):
         # self.normalise_image = torchvision.transforms.Compose(
         #     [
         #     # torchvision.transforms.ToTensor(),
-        #     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        #     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
+        #                                      std=[0.229, 0.224, 0.225]),
         #     ]
         # )
         self.return_orig_images = return_orig_images
@@ -179,7 +181,7 @@ class NuscenesDataset(Dataset):
         samples = [sample for sample in self.nusc.sample]
 
         # remove samples that aren't in this split
-        samples = [sample for sample in samples if self.nusc.get('scene', sample['scene_token'])['name'] in self.scenes]
+        samples = [sample for sample in samples if self.nusc.get('scene',sample['scene_token'])['name'] in self.scenes]
 
         # sort by scene, timestamp (only to make chronological viz easier)
         samples.sort(key=lambda x: (x['scene_token'], x['timestamp']))
@@ -226,7 +228,7 @@ class NuscenesDataset(Dataset):
         """
         Obtain the vehicle attitude at the current moment.
         """
-        egopose = self.nusc.get('ego_pose', self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
+        egopose = self.nusc.get('ego_pose', self.nusc.get('sample_data',rec['data']['LIDAR_TOP'])['ego_pose_token'])
         trans = -np.array(egopose['translation'])
         yaw = Quaternion(egopose['rotation']).yaw_pitch_roll[0]
         rot = Quaternion(scalar=np.cos(yaw / 2), vector=[0, 0, np.sin(yaw / 2)]).inverse
@@ -237,7 +239,8 @@ class NuscenesDataset(Dataset):
         return len(self.indices)
     
     def get_input_data(self, sample_info_indices):
-        """Obtain the input image as well as the intrinsics and extrinsics parameters of the corresponding camera.
+        """Obtain the input image as well as the intrinsics and extrinsics parameters
+        of the corresponding camera.
 
         Args:
             sample_info (dict): a dict containing the information tokens of the sample.
@@ -339,21 +342,26 @@ class NuscenesDataset(Dataset):
 
                 # # Apply data augmentation to the images and update instrinsics.
                 
-        images, intrinsics, original_img = self.ida(images, intrinsics, self.return_orig_images)
+        images, intrinsics, original_img = self.ida(images, intrinsics,
+                                                    self.return_orig_images)
 
         return images, intrinsics, extrinsics, lidar_2_sensor, original_img
 
     def record_instance(self, sample_info_indices):
         """
-        Record information about each visible instance in the sequence, assigning a unique ID to each instance.
+        Record information about each visible instance in the sequence,
+        assigning a unique ID to each instance.
         
         Args:
             sample_info_indices (list): list of indices of the samples in the sequence.
         Returns:
-            instance_map (dict): a dictionary mapping each instance token to a unique ID.
-            instance_dict (dict): a dictionary containing detailed information about each instance token.
+            instance_map (dict): a dictionary mapping each instance token to a unique
+            ID.
+            instance_dict (dict): a dictionary containing detailed information about
+            each instance token.
             egopose_list (np.ndarray): array of egoposes of the sequence.
-            visible_instance_set (set): set of instance tokens that are visible in the sequence.
+            visible_instance_set (set): set of instance tokens that are visible in the
+            sequence.
         """
 
         instance_map = {}
@@ -454,15 +462,20 @@ class NuscenesDataset(Dataset):
 
     def get_label(self, instance_dict, egopose_list):
         """
-        Generate labels for semantic segmentation, instance segmentation, z position, attribute from the raw data of nuScenes.
+        Generate labels for semantic segmentation, instance segmentation, z position,
+        attribute from the raw data of nuScenes.
         """
 
         visible_instance_set = set()
 
-        segmentation = np.zeros((self.sequence_length,self.bev_dimension[0], self.bev_dimension[1]))
-        instance = np.zeros((self.sequence_length,self.bev_dimension[0], self.bev_dimension[1]))
-        z_position = np.zeros((self.sequence_length,self.bev_dimension[0], self.bev_dimension[1]))
-        attribute_label = np.zeros((self.sequence_length,self.bev_dimension[0], self.bev_dimension[1]))
+        segmentation = np.zeros((self.sequence_length,self.bev_dimension[0],
+                                 self.bev_dimension[1]))
+        instance = np.zeros((self.sequence_length,self.bev_dimension[0],
+                             self.bev_dimension[1]))
+        z_position = np.zeros((self.sequence_length,self.bev_dimension[0],
+                               self.bev_dimension[1]))
+        attribute_label = np.zeros((self.sequence_length,self.bev_dimension[0],
+                                    self.bev_dimension[1]))
 
         for i in range(self.sequence_length):
             timestep = i
@@ -522,10 +535,12 @@ class NuscenesDataset(Dataset):
     @staticmethod
     def generate_flow(flow, instance_img, instance, instance_id):
         """
-        Generate ground truth for the flow of each instance based on instance segmentation.
+        Generate ground truth for the flow of each instance based on
+        instance segmentation.
         """        
         _, h, w = instance_img.shape
-        x, y = torch.meshgrid(torch.arange(h, dtype=torch.float), torch.arange(w, dtype=torch.float), indexing='ij')
+        x, y = torch.meshgrid(torch.arange(h, dtype=torch.float),
+                              torch.arange(w, dtype=torch.float), indexing='ij')
         grid = torch.stack((x, y), dim=0)
 
         # Set the first frame
@@ -548,7 +563,8 @@ class NuscenesDataset(Dataset):
 
         return flow
     
-    def get_flow_label(self, instance_img, instance_dict, instance_map, ignore_index=255):
+    def get_flow_label(self, instance_img, instance_dict,
+                       instance_map, ignore_index=255):
         """
         Generate the global map of the flow ground truth.
         """
