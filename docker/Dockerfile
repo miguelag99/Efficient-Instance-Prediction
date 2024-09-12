@@ -1,5 +1,5 @@
 # FROM nvidia/cuda:12.2.2-devel-ubuntu22.04
-FROM nvcr.io/nvidia/pytorch:23.10-py3
+FROM nvcr.io/nvidia/pytorch:24.05-py3
 
 # Obtain the UID and GID of the current user to create a user with the same ID, this is to avoid permission issues when mounting local volumes.
 ARG USER
@@ -40,4 +40,4 @@ RUN pip install -r /.cache/requirements.txt
 
 WORKDIR /home/$USER/Datasets
 WORKDIR /home/$USER/workspace
-ENTRYPOINT /bin/bash
+ENTRYPOINT [ "/bin/bash", "-l", "-c"  ]
