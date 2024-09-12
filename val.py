@@ -1,18 +1,15 @@
-import os
-import socket
-import time
 import argparse
-import numpy as np
+import os
 import random
 
 import lightning as L
+import numpy as np
 import torch
-import yaml
 
-from prediction.data.prepare_loader import prepare_dataloaders
 from prediction.configs.baseline import baseline_cfg
-from prediction.config import namespace_to_dict
+from prediction.data.prepare_loader import prepare_dataloaders
 from prediction.trainer import TrainingModule
+
 
 def main(args):
     
@@ -42,10 +39,7 @@ def main(args):
     torch.backends.cudnn.benchmark = False
     
     _ , valloader = prepare_dataloaders(cfg)
-                 
-           
-    import pdb; pdb.set_trace()
-    
+                     
     l_module.eval()
 
     trainer = L.Trainer(
@@ -69,9 +63,13 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint', type=str,required=True, help='Path to model checkpoint')
-    parser.add_argument('--dataset_root', type=str, default='/home/perception/Datasets/nuscenes', help='Path to dataset root')
-    parser.add_argument('--nusc_version',type=str, default='v1.0-trainval', help='Nuscenes dataset version')
+    parser.add_argument('--checkpoint', type=str,required=True,
+                        help='Path to model checkpoint')
+    parser.add_argument('--dataset_root', type=str,
+                        default='/home/perception/Datasets/nuscenes',
+                        help='Path to dataset root')
+    parser.add_argument('--nusc_version',type=str, default='v1.0-trainval',
+                        help='Nuscenes dataset version')
     args = parser.parse_args()
 
     main(args)

@@ -1,18 +1,19 @@
 import torch
 
-from nuscenes.nuscenes import NuScenes
 from prediction.data.nuscenes_dataset import NuscenesDataset
+
 
 def prepare_dataloaders(cfg, return_dataset=False, return_orig_images=False):
     """
     Prepare the NuScenes dataloader
     """
     version = cfg.DATASET.VERSION
-    train_on_training_data = True
 
     # TODO: pass nuscenes object to each loader instead of creating it inside
-    train_data = NuscenesDataset(cfg, mode = 'train', return_orig_images=return_orig_images)
-    val_data = NuscenesDataset(cfg, mode = 'val', return_orig_images=return_orig_images)
+    train_data = NuscenesDataset(cfg, mode = 'train',
+                                 return_orig_images=return_orig_images)
+    val_data = NuscenesDataset(cfg, mode = 'val',
+                               return_orig_images=return_orig_images)
 
     if cfg.DATASET.VERSION == 'mini':
         train_data.indices = train_data.indices[:10]
