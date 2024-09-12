@@ -38,11 +38,16 @@ def main(args):
     elif args.config == 'tiny_short_timm_mobilenetv4_hybrid_large':
         from prediction.configs.tiny_short_timm_mobilenetv4_hybrid_large \
             import tiny_short_timm
-        cfg = tiny_short_timm    
+        cfg = tiny_short_timm   
+    elif args.config == 'tiny_short_timm_convnext_tiny':
+        from prediction.configs.tiny_short_timm_convnext_tiny import tiny_short_timm
+        cfg = tiny_short_timm   
     else:
         raise ValueError('Invalid config name')
     
     hparams = namespace_to_dict(cfg)
+    
+    exit()
     
     if cfg.PRETRAINED.RESUME_TRAINING:
         save_dir = cfg.PRETRAINED.PATH
@@ -129,7 +134,8 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str, default='b0_short', required=True,
                         choices=['tiny_short', 'b0_short','tiny_long', 'b0_long',
                                  'tiny_short_resnet18',
-                                 'tiny_short_timm_mobilenetv4_hybrid_large'])
+                                 'tiny_short_timm_mobilenetv4_hybrid_large',
+                                 'tiny_short_timm_convnext_tiny'])
     args = parser.parse_args()
 
 
