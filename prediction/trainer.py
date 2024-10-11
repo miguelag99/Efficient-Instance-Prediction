@@ -240,6 +240,13 @@ class TrainingModule(L.LightningModule):
                 params, lr=self.cfg.OPTIMIZER.LR,
                 weight_decay=self.cfg.OPTIMIZER.WEIGHT_DECAY
             )
+        elif optim_name == 'AdamWScheduleFree':
+            import schedulefree
+            optimizer = schedulefree.AdamWScheduleFree(
+                params, lr=self.cfg.OPTIMIZER.LR,
+                weight_decay=self.cfg.OPTIMIZER.WEIGHT_DECAY
+            )
+            return optimizer
         else:
             raise NotImplementedError
 
