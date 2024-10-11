@@ -2,21 +2,21 @@ from types import SimpleNamespace
 
 baseline_cfg = SimpleNamespace(
     LOG_DIR = 'training_results',
-    TAG = 'convnext_tiny',
-    WANDB_PROJECT = 'FAEFormer',
+    TAG = '',
+    WANDB_PROJECT = '',
     WANDB_ID = '',
 
     ACCELERATOR = "cuda",
     GPUS = 0,  # which gpus to use
     DEVICES = "auto", # how many gpus to use, auto for all available
-    PRECISION = '16-mixed',  # 16-mixed or 32bit
-    BATCHSIZE = 2,
+    PRECISION = '32',  # 16-mixed or 32bit
+    BATCHSIZE = 1,
     EPOCHS = 30,
     
     OPTIMIZER = SimpleNamespace(
         TYPE = 'AdamW',
         LR = 6e-5,
-        WEIGHT_DECAY = 2e-3,
+        WEIGHT_DECAY = 0.0000001,
     ),
     
     SCHEDULER = SimpleNamespace(
