@@ -8,10 +8,11 @@ import torch
 import torchvision.transforms.functional as F
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils import splits
-from nuscenes.utils.data_classes import Box
+from nuscenes.utils.data_classes import Box, LidarPointCloud
 from pyquaternion import Quaternion
 from torch.utils.data import Dataset
 from torchvision.io import read_image
+from einops import rearrange
 
 from prediction.utils.geometry import (
     calculate_birds_eye_view_parameters,
@@ -99,13 +100,11 @@ class ImageDataAugmentator:
 class NuscenesDataset(Dataset):
 
     def __init__(self, config: SimpleNamespace, mode = 'train',
-                 return_orig_images: bool = False) -> None:
+                 nuscenes_handler: NuScenes = None,
+                 return_orig_images: bool = False, 
+                 return_lidar: bool = False) -> None:
         
-        self.nusc = NuScenes(
-            version=config.DATASET.VERSION,
-            dataroot=config.DATASET.DATAROOT,
-            verbose=True
-        )
+        self.nusc = nuscenes_handler
         self.config = config
         self.sequence_length = config.TIME_RECEPTIVE_FIELD + config.N_FUTURE_FRAMES
         self.mode = mode
@@ -129,17 +128,11 @@ class NuscenesDataset(Dataset):
         self.scenes = self._get_scenes()
         self.ixes = self._get_samples()
         self.indices = self._get_indices()
-
         
-
-        # self.normalise_image = torchvision.transforms.Compose(
-        #     [
-        #     # torchvision.transforms.ToTensor(),
-        #     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-        #                                      std=[0.229, 0.224, 0.225]),
-        #     ]
-        # )
         self.return_orig_images = return_orig_images
+        self.return_lidar = return_lidar
+        self.lidar_len = 40000
+        
         self.ida = ImageDataAugmentator(config, self.mode, p_grid=0.0)
 
 
@@ -239,12 +232,14 @@ class NuscenesDataset(Dataset):
         return len(self.indices)
     
     def get_input_data(self, sample_info_indices):
-        """Obtain the input image as well as the intrinsics and extrinsics parameters
+        """Obtain the sensors input as well as the intrinsics and extrinsics parameters
         of the corresponding camera.
 
         Args:
             sample_info (dict): a dict containing the information tokens of the sample.
         """
+        data = {}
+        
         scale_ratio = self.config.IMAGE.RESIZE_SCALE
         T = self.sequence_length
         N = self.config.DATASET.N_CAMERAS
@@ -256,7 +251,17 @@ class NuscenesDataset(Dataset):
         images = torch.zeros((T, N, 3, H1, W1), dtype=torch.float)
         intrinsics = torch.zeros((T, N, 3, 3), dtype=torch.float)
         extrinsics = torch.zeros((T, N, 4, 4), dtype=torch.float)
-        lidar_2_sensor = torch.zeros((T, N, 4, 4), dtype=torch.float)
+        
+        lidar_ego_2_cam = torch.zeros((T, N, 4, 4), dtype=torch.float)
+        lidar_sensor_2_ego = torch.zeros((T, 4, 4), dtype=torch.float)
+        
+        if self.return_orig_images:
+            orig_intrinsic = torch.zeros((T, N, 3, 3), dtype=torch.float)
+        
+        if self.return_lidar:
+            lidar_pcl = torch.zeros((T, self.lidar_len, 3), dtype=torch.float)
+        else:
+            lidar_pcl = None
 
         for i, n in enumerate(sample_info_indices):
 
@@ -285,7 +290,20 @@ class NuscenesDataset(Dataset):
                 np.array([0, 0, 0, 1])
             ])
             lidar_ego_to_lidar_sensor = np.linalg.inv(lidar_sensor_to_lidar_ego)
-
+            
+            if self.return_lidar:
+                # No intensity information
+                sample_pcl = LidarPointCloud.from_file(self.config.DATASET.DATAROOT + \
+                    lidar_sample['filename']).points[:-1].T
+                
+                if sample_pcl.shape[0] < self.lidar_len:
+                    sample_pcl = np.vstack([sample_pcl,
+                                 np.zeros((self.lidar_len - sample_pcl.shape[0], 3))])
+                else:
+                    sample_pcl = sample_pcl[:self.lidar_len]
+                
+                lidar_pcl[i] = torch.from_numpy(sample_pcl).float()                        
+            
             for j, cam in enumerate(CAMERAS):
                                   
                 camera_sample = self.nusc.get('sample_data', sample_info['data'][cam])
@@ -311,18 +329,11 @@ class NuscenesDataset(Dataset):
                     np.array([0, 0, 0, 1])
                 ])
                 car_egopose_to_sensor = np.linalg.inv(car_egopose_to_sensor)
-
+                
                 ## Combine all the transformation.
-                # From sensor to lidar_frame.
+                # From sensor to lidar_frame (common ego).
                 lidar_to_sensor = car_egopose_to_sensor @ world_to_car_egopose @ lidar_to_world
                 sensor_to_lidar = torch.from_numpy(np.linalg.inv(lidar_to_sensor)).float()
-                # From sensor to lidar sensor (sensor -> ego -> map -> ego' -> sensor)
-                cam_2_lidar_sensor = lidar_ego_to_lidar_sensor @ np.linalg.inv(lidar_to_sensor)
-                lidar_sensor_2_cam_sensor = torch.from_numpy(np.linalg.inv(cam_2_lidar_sensor)).float()
-                # Direct projection form 3D point in LiDAR sensor frame to camera plane
-                # ext_intrinsic = np.eye(4)
-                # ext_intrinsic[:intrinsic.shape[0], :intrinsic.shape[1]] = intrinsic
-                # lidar_2_img = ext_intrinsic @ lidar_2_cam_sensor
 
                 # Load image.
                 image_filename = os.path.join(self.nusc.dataroot,
@@ -338,14 +349,53 @@ class NuscenesDataset(Dataset):
 
                 intrinsics[i,j,:,:] = intrinsic
                 extrinsics[i,j,:,:] = sensor_to_lidar
-                lidar_2_sensor[i,j,:,:] = lidar_sensor_2_cam_sensor
+                lidar_ego_2_cam[i,j,:,:] = torch.from_numpy(lidar_to_sensor).float()
 
-                # # Apply data augmentation to the images and update instrinsics.
+            lidar_sensor_2_ego[i,:,:] = torch.from_numpy(lidar_sensor_to_lidar_ego).float()
+
+        # Apply data augmentation to the images and update instrinsics.
+        if self.return_orig_images:
+            orig_intrinsic = intrinsics.clone()
+            expanded_intrinsics = torch.eye(4,4).expand(T*N, 4, 4).clone()        
+            expanded_intrinsics[:, :3, :3] = rearrange(orig_intrinsic,
+                                                       't n h w -> (t n) h w')
+            orig_lidar_ego_2_img = expanded_intrinsics @ rearrange(lidar_ego_2_cam,
+                                                            't n h w -> (t n) h w')
+            orig_lidar_ego_2_img = rearrange(orig_lidar_ego_2_img,
+                                             '(t n) h w -> t n h w', t=T)
                 
+        else:
+            orig_intrinsic = None
+            orig_lidar_ego_2_img = None
+      
         images, intrinsics, original_img = self.ida(images, intrinsics,
                                                     self.return_orig_images)
-
-        return images, intrinsics, extrinsics, lidar_2_sensor, original_img
+        
+        # From ego lidar frame to projected img (ego -> map -> ego' -> sensor -> img)
+        expanded_intrinsics = torch.eye(4,4).expand(T*N, 4, 4).clone()        
+        expanded_intrinsics[:, :3, :3] = rearrange(intrinsics,'t n h w -> (t n) h w')
+        lidar_ego_2_img = expanded_intrinsics @ rearrange(lidar_ego_2_cam,
+                                                          't n h w -> (t n) h w')
+        lidar_ego_2_img = rearrange(lidar_ego_2_img, '(t n) h w -> t n h w', t=T)
+        
+        # return images, intrinsics, extrinsics, lidar_ego_2_img, lidar_sensor_2_ego, \
+        #     original_img, lidar_pcl
+        result = {
+            'image': images,
+            'intrinsics': intrinsics,
+            'extrinsics': extrinsics,
+            'lidar_ego_2_img': lidar_ego_2_img,
+            'lidar_sensor_2_ego': lidar_sensor_2_ego,
+            'lidar_ego_2_cam': lidar_ego_2_cam,
+            
+            'orig_image': original_img,
+            'orig_intrinsics': orig_intrinsic,
+            'orig_lidar_ego_2_img': orig_lidar_ego_2_img,
+            
+            'lidar_pcl': lidar_pcl
+        }
+        
+        return {k: v for k, v in result.items() if v is not None}
 
     def record_instance(self, sample_info_indices):
         """
@@ -602,13 +652,21 @@ class NuscenesDataset(Dataset):
         # extra dimension when indexing one element (POSSIBLE CAUSE OF ERRORS).
 
         sample_info_indices = self.indices[index].tolist()
-        data["image"], data["intrinsics"], data["extrinsics"], data["lidar_2_sensor"], orig_img = self.get_input_data(sample_info_indices)
+        
+        # data["image"], data["intrinsics"], data["extrinsics"], data["lidar_ego_2_img"],\
+        #    lidar_sensor_2_ego, orig_img, lidar_pcl = self.get_input_data(sample_info_indices)
 
-        if orig_img is not None and self.return_orig_images:
-            data["orig_image"] = orig_img
+        # if orig_img is not None and self.return_orig_images:
+        #     data["orig_image"] = orig_img
+        # if lidar_pcl is not None and self.return_lidar:
+        #     data["lidar_pcl"] = lidar_pcl
+        #     data["lidar_sensor_2_ego"] = lidar_sensor_2_ego
+        
+        data = self.get_input_data(sample_info_indices)
 
         # Record instance information.
-        instance_map, instance_dict, egopose_list, visible_instance_set = self.record_instance(sample_info_indices)
+        instance_map, instance_dict, egopose_list, visible_instance_set =\
+            self.record_instance(sample_info_indices)
 
         # Obtain future egomotion.
         data["future_egomotion"] = self.get_future_egomotion(sample_info_indices)
@@ -623,7 +681,8 @@ class NuscenesDataset(Dataset):
         #   - z_position: (T, H, W)
         #   - attribute: (T, H, W)
                     
-        data['segmentation'], data['instance'], data['z_position'], data['attribute'] = self.get_label(instance_dict, egopose_list)
+        data['segmentation'], data['instance'], data['z_position'], data['attribute'] =\
+            self.get_label(instance_dict, egopose_list)
         
 
         data['flow'] = self.get_flow_label(instance_img=data['instance'],
@@ -703,29 +762,3 @@ class NuscenesDataset(Dataset):
         if abs(x - prev_x) > threshold or abs(y - prev_y) > threshold:
             return False
         return True
-    
-
-
-# dataset = NuscenesDataset(config)
-# dataloader = DataLoader(
-#     dataset, batch_size=16, shuffle=True, num_workers=0,
-#     drop_last=True
-# )
-
-# import psutil
-# from tqdm.auto import tqdm
-# pbar = tqdm(dataloader)
-
-# with torch.profiler.profile(
-#     schedule=torch.profiler.schedule(wait=1, warmup=1, active=3),
-#     on_trace_ready=torch.profiler.tensorboard_trace_handler('./log'),
-#     record_shapes=True,
-#     with_stack=True,
-#     profile_memory=True,
-# ) as prof:
-#     for batch in pbar:
-#         memory = psutil.virtual_memory()[2]
-#         pbar.set_description(f"Memory usage: {memory:.2f}%")
-
-# import gc
-# gc.collect()
