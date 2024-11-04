@@ -6,6 +6,7 @@ import numpy as np
 import wandb
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau, PolynomialLR
+from einops import rearrange
 
 from prediction.losses import SegmentationLoss, SpatialRegressionLoss
 from prediction.metrics import IntersectionOverUnion, PanopticMetric
@@ -27,6 +28,7 @@ class TrainingModule(L.LightningModule):
 
 
         self.model = FullSegformerCustomHead(self.cfg)
+        self.lidar_supervision = self.cfg.LIDAR_SUPERVISION
 
 
         # Bird's-eye view extent in meters
@@ -46,15 +48,22 @@ class TrainingModule(L.LightningModule):
             future_discount=self.cfg.FUTURE_DISCOUNT, 
             ignore_index=self.cfg.DATASET.IGNORE_INDEX,
         )
+        depth_lidar_loss = nn.CrossEntropyLoss(ignore_index=-1)
+        
         self.losses_fn = nn.ModuleDict({
             'segmentation': seg_loss,
             'instance_flow': flow_loss,
+            'depth_lidar': depth_lidar_loss,
         })
 
         # Uncertainty weighting
         self.model.segmentation_weight = nn.Parameter(torch.tensor(0.0),
                                                       requires_grad=True)
         self.model.flow_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
+        
+        if self.lidar_supervision:
+            self.model.depth_weight = nn.Parameter(torch.tensor(0.0),
+                                                   requires_grad=True)
 
         # Metrics
         self.metric_iou_val = IntersectionOverUnion(n_classes=self.n_classes)
@@ -117,6 +126,11 @@ class TrainingModule(L.LightningModule):
             labels['flow']
         )
         loss['flow_uncertainty'] = 0.5 * self.model.flow_weight
+        
+        loss['depth'] = self.losses_fn['depth_lidar'](
+            rearrange(output['depth_maps'],'b s n d h w -> (b s n) d h w'),
+            rearrange(labels['depth_maps'], 'b s n h w -> (b s n) h w')
+            )
 
         return loss
 
@@ -155,6 +169,10 @@ class TrainingModule(L.LightningModule):
             future_distribution_inputs = torch.cat(future_distribution_inputs, dim=2)
         
         labels['future_egomotion'] = batch['future_egomotion']
+        
+        # Generate depth maps with LiDAR for supervision
+        if self.lidar_supervision:
+            labels['depth_maps'] = batch['depth_map']
 
         return labels, future_distribution_inputs
 

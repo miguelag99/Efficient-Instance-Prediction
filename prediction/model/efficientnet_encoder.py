@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from efficientnet_pytorch import EfficientNet
 
@@ -10,7 +11,8 @@ class EncoderEfficientNet(nn.Module):
                  pretrained: bool = True,
                  depth_channels: int = 32,
                  downsample: int = 8,
-                 model_name: str = 'efficientnet-b0'
+                 model_name: str = 'efficientnet-b0',
+                 return_depth_map: bool = False,
                  ):
         super().__init__()
         self.D = depth_channels
@@ -18,6 +20,7 @@ class EncoderEfficientNet(nn.Module):
         self.use_depth_distribution = depth_distribution
         self.downsample = downsample
         self.version = model_name.split('-')[1]
+        self.return_depth_map = return_depth_map
 
         self.backbone = EfficientNet.from_pretrained(model_name)
         self.delete_unused_layers()
@@ -97,14 +100,17 @@ class EncoderEfficientNet(nn.Module):
         return x
 
     def forward(self, x):
+                
         x = self.get_features(x)  # get feature vector
 
         x = self.depth_layer(x)  # feature and depth head
-
+        
         if self.use_depth_distribution:
             depth = x[:, : self.D].softmax(dim=1)
             x = depth.unsqueeze(1) * x[:, self.D : (self.D + self.C)].unsqueeze(2)  # outer product depth and features
+            if self.return_depth_map:
+                return x, depth
         else:
             x = x.unsqueeze(2).repeat(1, 1, self.D, 1, 1)
 
-        return x
+        return x, None

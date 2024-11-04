@@ -28,6 +28,7 @@ baseline_cfg = SimpleNamespace(
     N_WORKERS = 2,
     LOGGING_INTERVAL = 5,
     
+    LIDAR_SUPERVISION = True,
     
     # Pretrainied or resume training configuration
     # If LOAD_WEIGHTS is True, then the model weights will be loaded from the path 

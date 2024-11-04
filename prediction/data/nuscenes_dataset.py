@@ -624,6 +624,67 @@ class NuscenesDataset(Dataset):
         for token, instance in instance_dict.items():
             flow = self.generate_flow(flow, instance_img, instance, instance_map[token])
         return flow
+    
+    def get_depth_label(self, lidar_pcl, lidar_sensor_2_ego, lidar_ego_2_cam,
+                        intrinsics, img_shape = (224,480), downsample=8, n_cameras=6,
+                        depth_bound=(2.0,50.0,1.0), receptive_field=3
+                        ):
+        depth_categories = torch.arange(depth_bound[0],
+                                        depth_bound[1] + depth_bound[2],
+                                        depth_bound[2])
+
+        depth_map = torch.ones((receptive_field, n_cameras, img_shape[0], img_shape[1])
+                              ) * (depth_bound[1] + 1)
+        
+        for cam in range(n_cameras):    
+            # Project into 3d cam reference and filter behind the corresponding camera
+            local_pcl = torch.cat((lidar_pcl,
+                                   torch.ones_like(lidar_pcl[...,-1]).unsqueeze(-1)),2)
+            local_pcl = lidar_ego_2_cam[:,cam,...] @ \
+                lidar_sensor_2_ego @ rearrange(local_pcl, 's n c -> s c n') 
+                
+            # Project LiDAR in cam 3d coord system into image
+            exp_intrinsics = torch.eye(4).expand(intrinsics.shape[0], 4, 4).clone()
+            
+            exp_intrinsics[:,:3,:3] = intrinsics[:,cam]
+                    
+            projection = exp_intrinsics @ local_pcl
+            projection[:,:3] = projection[:,:3] / projection[:,2].unsqueeze(1)
+            
+            # Add 3D info --> u,v,x,y,z
+            projection = torch.cat((projection[:,:2],local_pcl[:,:3]),1)
+                
+            for sweep in range(receptive_field):                
+                # Filter points outside the image 
+                pt_filter = torch.logical_and(projection[sweep,0,:] > 0,
+                                            projection[sweep,1,:] > 0)
+                pt_filter = torch.logical_and(pt_filter,
+                                            projection[sweep,1,:] < img_shape[0])
+                pt_filter = torch.logical_and(pt_filter,
+                                            projection[sweep,0,:] < img_shape[1])
+                pt_filter = torch.logical_and(pt_filter,    # Behind the camera
+                                            projection[sweep,-1,:] > 0) 
+                
+                depth_values = torch.linalg.vector_norm(
+                    projection[sweep,2:,pt_filter],dim=0)
+                                                
+                depth_map[sweep,cam,projection[sweep,1,pt_filter].int(),
+                        projection[sweep,0,pt_filter].int()] = depth_values
+                
+        depth_map = -torch.nn.functional.max_pool2d(-depth_map,
+                                            kernel_size=downsample, stride=downsample)
+                        
+        # Assign categories to each pixel
+        depth_map = rearrange(depth_map, 's n h w -> (s n) (h w)')
+        depth_filter = torch.logical_and(depth_map<depth_bound[1],depth_map>depth_bound[0])
+        depth_cat_map = torch.ones_like(depth_map,dtype=torch.long) * -1
+        depth_cat_map[depth_filter] = torch.bucketize(
+            depth_map[depth_filter], depth_categories) - 1
+        depth_cat_map = rearrange(
+            depth_cat_map, '(s n) (h w) -> s n h w', s=receptive_field, n=n_cameras,
+            h=img_shape[0]//downsample, w=img_shape[1]//downsample)
+        
+        return depth_cat_map
 
     def __getitem__(self, index) -> Any:
         """_summary_
@@ -690,6 +751,17 @@ class NuscenesDataset(Dataset):
                                            instance_map=instance_map,
                                            ignore_index=self.config.DATASET.IGNORE_INDEX)
         
+        if self.config.LIDAR_SUPERVISION:
+            data['depth_map'] = self.get_depth_label(
+                lidar_pcl=data['lidar_pcl'],
+                lidar_sensor_2_ego=data['lidar_sensor_2_ego'],
+                lidar_ego_2_cam=data['lidar_ego_2_cam'],
+                intrinsics=data['intrinsics'],
+                img_shape=self.config.IMAGE.FINAL_DIM,
+                downsample=self.config.MODEL.ENCODER.DOWNSAMPLE,
+                n_cameras=self.config.DATASET.N_CAMERAS,
+                depth_bound=self.config.LIFT.D_BOUND,
+                receptive_field=self.config.TIME_RECEPTIVE_FIELD)
 
         # Generate the ground truth of centerness and offset
         instance_centerness, instance_offset = convert_instance_mask_to_center_and_offset_label(
