@@ -61,10 +61,6 @@ class TrainingModule(L.LightningModule):
                                                       requires_grad=True)
         self.model.flow_weight = nn.Parameter(torch.tensor(0.0), requires_grad=True)
         
-        if self.lidar_supervision:
-            self.model.depth_weight = nn.Parameter(torch.tensor(0.0),
-                                                   requires_grad=True)
-
         # Metrics
         self.metric_iou_val = IntersectionOverUnion(n_classes=self.n_classes)
         self.metric_panoptic_val = PanopticMetric(n_classes=self.n_classes)
@@ -127,10 +123,11 @@ class TrainingModule(L.LightningModule):
         )
         loss['flow_uncertainty'] = 0.5 * self.model.flow_weight
         
-        loss['depth'] = self.losses_fn['depth_lidar'](
-            rearrange(output['depth_maps'],'b s n d h w -> (b s n) d h w'),
-            rearrange(labels['depth_maps'], 'b s n h w -> (b s n) h w')
-            )
+        if self.lidar_supervision:
+            loss['depth'] = 0.1 * self.losses_fn['depth_lidar'](
+                rearrange(output['depth_maps'],'b s n d h w -> (b s n) d h w'),
+                rearrange(labels['depth_maps'], 'b s n h w -> (b s n) h w')
+                )
 
         return loss
 
