@@ -52,7 +52,9 @@ def main(args):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     
-    trainloader, valloader = prepare_dataloaders(cfg)
+    trainloader, valloader = prepare_dataloaders(cfg, return_dataset=False,
+                                                 return_orig_images=False,
+                                                 return_pcl=cfg.LIDAR_SUPERVISION)
 
     if cfg.PRETRAINED.LOAD_WEIGHTS:
         # Load model weights from checkpoint

@@ -20,9 +20,11 @@ class FullSegformerCustomHead(nn.Module):
         self.use_ego_motion = self.cfg.MODEL.STCONV.INPUT_EGOPOSE
         self.receptive_field = self.cfg.TIME_RECEPTIVE_FIELD
 
+        self.use_depth_distribution = self.cfg.MODEL.ENCODER.USE_DEPTH_DISTRIBUTION
         self.temporal_attn_channels = self.cfg.MODEL.ENCODER.OUT_CHANNELS
         if self.use_ego_motion:
             self.temporal_attn_channels += 6
+        self.lidar_supervision = self.cfg.LIDAR_SUPERVISION
 
         self.feature_extractor = FeatureExtractor(
                  x_bound = self.cfg.LIFT.X_BOUND,
@@ -37,6 +39,7 @@ class FullSegformerCustomHead(nn.Module):
                  use_depth_distribution = self.cfg.MODEL.ENCODER.USE_DEPTH_DISTRIBUTION,
                  model_name = self.cfg.MODEL.ENCODER.NAME,
                  img_size = self.cfg.IMAGE.FINAL_DIM,
+                 return_depth_map=self.lidar_supervision
                  )
                       
         segformer_out_dim = len(self.cfg.SEMANTIC_SEG.WEIGHTS)*(self.cfg.N_FUTURE_FRAMES + 2)*self.cfg.MODEL.SEGFORMER.HEAD_DIM_MULTIPLIER
@@ -91,9 +94,12 @@ class FullSegformerCustomHead(nn.Module):
         start_time = time.time()
 
         # Image feature extraction
-        x = self.feature_extractor(x, 
-                                   intrinsics, extrinsics, 
-                                   future_egomotion)
+        x, depth_maps = self.feature_extractor(x, 
+                                               intrinsics, extrinsics, 
+                                               future_egomotion)
+
+        if self.lidar_supervision:
+            output['depth_maps'] = depth_maps
         
         perception_time = time.time()
 

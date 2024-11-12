@@ -1,8 +1,26 @@
 # Efficient-Instance-Prediction
 
-[![CHANGELOG](https://img.shields.io/badge/Changelog-v1.1.0-2ea44f)](https://github.com/miguelag99/Efficient-Instance-Prediction/blob/main/CHANGELOG.md) ![DOI](https://img.shields.io/badge/DOI-gray?style=flat&logo=doi) ![arxiv](https://img.shields.io/badge/arXiv-grey?style=flat&logo=arxiv&logoColor=%23B31B1B)
-
-[![pytorch](https://img.shields.io/badge/PyTorch-2.1.0-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org) [![Lightning](https://img.shields.io/badge/Lightning-2.2.3-purple?style=flat&logo=lightning)](https://lightning.ai/docs/pytorch/stable/) [![wandb](https://img.shields.io/badge/Wandb-yellow?style=flat&logo=weightsandbiases)](https://wandb.ai/) [![Docker](https://img.shields.io/badge/Docker-%23007FFF?style=flat&logo=docker&logoColor=white&labelColor=%23007FFF)](https://www.docker.com)
+<div align=center>
+  <a href="https://github.com/miguelag99/Efficient-Instance-Prediction/blob/main/CHANGELOG.md">
+    <img src="https://img.shields.io/badge/Changelog-v1.1.2-2ea44f" alt="CHANGELOG">
+  </a>
+  <img src="https://img.shields.io/badge/DOI-gray?style=flat&logo=doi" alt="DOI">
+  <a href="https://arxiv.org/abs/2411.06851">
+    <img src="https://img.shields.io/badge/arXiv-v1-red?style=flat&logo=arxiv&logoColor=%23B31B1B" alt="arxiv">
+  </a>
+  <a href="https://pytorch.org">
+    <img src="https://img.shields.io/badge/PyTorch-2.1.0-EE4C2C.svg?style=flat&logo=pytorch" alt="pytorch">
+  </a>
+  <a href="https://lightning.ai/docs/pytorch/stable/">
+    <img src="https://img.shields.io/badge/Lightning-2.2.3-purple?style=flat&logo=lightning" alt="Lightning">
+  </a>
+  <a href="https://wandb.ai/">
+    <img src="https://img.shields.io/badge/Wandb-yellow?style=flat&logo=weightsandbiases" alt="wandb">
+  </a>
+  <a href="https://www.docker.com">
+    <img src="https://img.shields.io/badge/Docker-%23007FFF?style=flat&logo=docker&logoColor=white&labelColor=%23007FFF" alt="Docker">
+  </a>
+</div>
 
 This repository contains the code for the paper **Fast and Efficient Transformer-based Method for Bird’s Eye View Instance Prediction** by:
 

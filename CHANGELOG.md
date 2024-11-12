@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.1.2
+
+- First version with LiDAR depth supervision.
+
 ## Version 1.1.1
 
 - [ScheduleFree](https://github.com/facebookresearch/schedule_free) support.

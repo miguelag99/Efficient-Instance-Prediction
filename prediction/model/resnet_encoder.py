@@ -98,10 +98,12 @@ class ResNetFPNEncoder(nn.Module):
         depth_channels: int = 32,
         downsample: int = 8,
         depth_distribution: bool = True,
+        return_depth_map: bool = False,
     ) -> None:
         super().__init__()
 
         self.use_depth_distribution = depth_distribution
+        self.return_depth_map = return_depth_map
         
         if depth_distribution:
             self.D = depth_channels
@@ -137,8 +139,9 @@ class ResNetFPNEncoder(nn.Module):
             depth_channels = F.softmax(x[:, :self.D, ...], dim=1)
             context_channels = x[:, self.D:, ...]
             x = depth_channels.unsqueeze(1) * context_channels.unsqueeze(2)
-            
-        return x
+            if self.return_depth_map:
+                return x, torch.argmax(depth_channels,dim=1)
+        return x, None
     
     def _pack_seq_dim(self, x: torch.Tensor) -> torch.Tensor:
         # Pack the seq and multicamera dimension.

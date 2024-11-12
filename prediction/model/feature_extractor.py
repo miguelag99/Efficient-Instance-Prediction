@@ -20,7 +20,8 @@ class FeatureExtractor(nn.Module):
                  latent_dim: int = 32,
                  use_depth_distribution: bool = True,
                  model_name: str = 'efficientnet-b0',
-                 img_size = (224,480)
+                 img_size = (224,480),
+                 return_depth_map: bool = False,
                  ):
         super().__init__()
 
@@ -44,6 +45,7 @@ class FeatureExtractor(nn.Module):
 
         self.frustum = self.create_frustum()
         self.depth_channels, _, _, _ = self.frustum.shape
+        self.return_depth_map = return_depth_map
 
         # temporal block
         self.receptive_field = receptive_field
@@ -62,6 +64,7 @@ class FeatureExtractor(nn.Module):
                 depth_channels=self.depth_channels,
                 downsample=downsample,
                 model_name=model_name,
+                return_depth_map=self.return_depth_map,
             )
         
         elif 'resnet' in model_name.lower():
@@ -71,6 +74,7 @@ class FeatureExtractor(nn.Module):
                 depth_channels=self.depth_channels,
                 downsample=downsample,
                 depth_distribution=use_depth_distribution,
+                return_depth_map=self.return_depth_map,
             )
         
         elif 'mobilenet' or 'convnext' in model_name.lower():
@@ -80,6 +84,7 @@ class FeatureExtractor(nn.Module):
                 depth_channels=self.depth_channels,
                 downsample=downsample,
                 depth_distribution=use_depth_distribution,
+                return_depth_map=self.return_depth_map,
             )
         else:
             raise ValueError(f'Encoder model {model_name} not handled.')
@@ -99,7 +104,7 @@ class FeatureExtractor(nn.Module):
         extrinsics = extrinsics[:, :self.receptive_field].contiguous()
         future_egomotion = future_egomotion[:, :self.receptive_field].contiguous()
 
-        x = self.bev_features(image, extrinsics, intrinsics)
+        x, depth_maps = self.bev_features(image, extrinsics, intrinsics)
 
         # Warp past features to the present's reference frame
         x = cumulative_warp_features(
@@ -107,7 +112,7 @@ class FeatureExtractor(nn.Module):
             mode='bilinear', spatial_extent=self.spatial_extent,
         )
 
-        return x
+        return x, depth_maps
 
     def create_frustum(self) -> nn.Parameter:
         # Create grid in image plane
@@ -145,10 +150,12 @@ class FeatureExtractor(nn.Module):
         extrinsics = pack_sequence_dim(extrinsics) 
 
         geometry = self.get_geometry(intrinsics, extrinsics)
-        x = self.encoder_forward(x)
+        x, depth = self.encoder_forward(x)
         x = self.projection_to_birds_eye_view(x, geometry)
         x = unpack_sequence_dim(x, batch, sweeps)
-        return x
+        if self.return_depth_map and depth is not None:
+            depth = unpack_sequence_dim(depth, batch, sweeps)
+        return x, depth
    
     def get_geometry(self, intrinsics, extrinsics):
         """Calculate the (x, y, z) 3D position of the features.
@@ -172,11 +179,14 @@ class FeatureExtractor(nn.Module):
         b, n, c, h, w = x.shape
 
         x = x.view(b * n, c, h, w)
-        x = self.encoder(x)
+        x, depth = self.encoder(x)
         x = x.view(b, n, *x.shape[1:])
         x = x.permute(0, 1, 3, 4, 5, 2)
 
-        return x
+        if self.return_depth_map and depth is not None:
+            depth = depth.view(b, n, *depth.shape[1:])
+
+        return x, depth
 
     def projection_to_birds_eye_view(self, x, geometry):
         """ Adapted from https://github.com/nv-tlabs/lift-splat-shoot/blob/master/src/models.py#L200"""
