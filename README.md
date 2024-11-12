@@ -1,6 +1,6 @@
 # Efficient-Instance-Prediction
 
-[![CHANGELOG](https://img.shields.io/badge/Changelog-v1.1.0-2ea44f)](https://github.com/miguelag99/Efficient-Instance-Prediction/blob/main/CHANGELOG.md) ![DOI](https://img.shields.io/badge/DOI-gray?style=flat&logo=doi) ![arxiv](https://img.shields.io/badge/arXiv-grey?style=flat&logo=arxiv&logoColor=%23B31B1B)
+[![CHANGELOG](https://img.shields.io/badge/Changelog-v1.1.1-2ea44f)](https://github.com/miguelag99/Efficient-Instance-Prediction/blob/main/CHANGELOG.md) ![DOI](https://img.shields.io/badge/DOI-gray?style=flat&logo=doi) [![arxiv](https://img.shields.io/badge/arXiv-grey?style=flat&logo=arxiv&logoColor=%23B31B1B)](https://arxiv.org/abs/2411.06851)
 
 [![pytorch](https://img.shields.io/badge/PyTorch-2.1.0-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org) [![Lightning](https://img.shields.io/badge/Lightning-2.2.3-purple?style=flat&logo=lightning)](https://lightning.ai/docs/pytorch/stable/) [![wandb](https://img.shields.io/badge/Wandb-yellow?style=flat&logo=weightsandbiases)](https://wandb.ai/) [![Docker](https://img.shields.io/badge/Docker-%23007FFF?style=flat&logo=docker&logoColor=white&labelColor=%23007FFF)](https://www.docker.com)
 
